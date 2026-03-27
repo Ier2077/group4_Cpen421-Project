@@ -1,0 +1,130 @@
+# ─────────────────────────────────────────────────────────
+# Render Blueprint – Emergency Response Platform
+# Deploy: push repo to GitHub → Render Dashboard → "New Blueprint Instance"
+# ─────────────────────────────────────────────────────────
+
+databases:
+  - name: erp-database
+    plan: free            # 1 shared Postgres (expires after 90 days on free)
+    databaseName: erp_db
+    user: erp_user
+
+services:
+  # ── Auth Service ──────────────────────────────────────
+  - type: web
+    name: erp-auth-service
+    runtime: docker
+    plan: free
+    dockerfilePath: services/auth_service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: erp-database
+          property: connectionString
+        # Render gives postgres:// — SQLAlchemy needs postgresql+asyncpg://
+        # We handle this transform at app startup (see below)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false        # you paste your CloudAMQP URL here after deploy
+      - key: FRONTEND_URL
+        sync: false
+
+  # ── Incident Service ──────────────────────────────────
+  - type: web
+    name: erp-incident-service
+    runtime: docker
+    plan: free
+    dockerfilePath: services/incident_service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: erp-database
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: erp-auth-service
+          envVarKey: JWT_SECRET
+      - key: RABBITMQ_URL
+        sync: false
+      - key: DISPATCH_SERVICE_URL
+        sync: false        # paste the Render URL of dispatch service
+
+  # ── Dispatch Service ──────────────────────────────────
+  - type: web
+    name: erp-dispatch-service
+    runtime: docker
+    plan: free
+    dockerfilePath: services/dispatch_service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: erp-database
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: erp-auth-service
+          envVarKey: JWT_SECRET
+      - key: RABBITMQ_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: erp-redis
+          property: connectionString
+
+  # ── Analytics Service ─────────────────────────────────
+  - type: web
+    name: erp-analytics-service
+    runtime: docker
+    plan: free
+    dockerfilePath: services/analytics_service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: erp-database
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: erp-auth-service
+          envVarKey: JWT_SECRET
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ── API Gateway ───────────────────────────────────────
+  # Frontend talks to this ONE URL — it proxies to all backend services
+  - type: web
+    name: erp-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: services/gateway/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: AUTH_SERVICE_URL
+        sync: false        # paste: https://erp-auth-service.onrender.com
+      - key: INCIDENT_SERVICE_URL
+        sync: false        # paste: https://erp-incident-service.onrender.com
+      - key: DISPATCH_SERVICE_URL
+        sync: false        # paste: https://erp-dispatch-service.onrender.com
+      - key: ANALYTICS_SERVICE_URL
+        sync: false        # paste: https://erp-analytics-service.onrender.com
+      - key: ALLOWED_ORIGINS
+        sync: false        # paste your frontend URL, or * for dev
+
+  # ── Redis ─────────────────────────────────────────────
+  - type: redis
+    name: erp-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru

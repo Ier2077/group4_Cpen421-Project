@@ -1,0 +1,210 @@
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth_db:
+    image: postgres:16-alpine
+    container_name: auth_db
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: ${DB_USER:-erp_user}
+      POSTGRES_PASSWORD: ${DB_PASS:-erp_pass}
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-erp_user} -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  incident_db:
+    image: postgres:16-alpine
+    container_name: incident_db
+    environment:
+      POSTGRES_DB: incident_db
+      POSTGRES_USER: ${DB_USER:-erp_user}
+      POSTGRES_PASSWORD: ${DB_PASS:-erp_pass}
+    ports:
+      - "5434:5432"
+    volumes:
+      - incident_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-erp_user} -d incident_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dispatch_db:
+    image: postgres:16-alpine
+    container_name: dispatch_db
+    environment:
+      POSTGRES_DB: dispatch_db
+      POSTGRES_USER: ${DB_USER:-erp_user}
+      POSTGRES_PASSWORD: ${DB_PASS:-erp_pass}
+    ports:
+      - "5435:5432"
+    volumes:
+      - dispatch_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-erp_user} -d dispatch_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  analytics_db:
+    image: postgres:16-alpine
+    container_name: analytics_db
+    environment:
+      POSTGRES_DB: analytics_db
+      POSTGRES_USER: ${DB_USER:-erp_user}
+      POSTGRES_PASSWORD: ${DB_PASS:-erp_pass}
+    ports:
+      - "5436:5432"
+    volumes:
+      - analytics_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-erp_user} -d analytics_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth_service:
+    build:
+      context: .
+      dockerfile: services/auth_service/Dockerfile
+    container_name: auth_service
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-erp_user}:${DB_PASS:-erp_pass}@auth_db:5432/auth_db
+    depends_on:
+      auth_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  incident_service:
+    build:
+      context: .
+      dockerfile: services/incident_service/Dockerfile
+    container_name: incident_service
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-erp_user}:${DB_PASS:-erp_pass}@incident_db:5432/incident_db
+      DISPATCH_SERVICE_URL: http://dispatch_service:8003
+    depends_on:
+      incident_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dispatch_service:
+    build:
+      context: .
+      dockerfile: services/dispatch_service/Dockerfile
+    container_name: dispatch_service
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-erp_user}:${DB_PASS:-erp_pass}@dispatch_db:5432/dispatch_db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      dispatch_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  analytics_service:
+    build:
+      context: .
+      dockerfile: services/analytics_service/Dockerfile
+    container_name: analytics_service
+    ports:
+      - "8004:8004"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-erp_user}:${DB_PASS:-erp_pass}@analytics_db:5432/analytics_db
+    depends_on:
+      analytics_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth_service
+      - incident_service
+      - dispatch_service
+      - analytics_service
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: gateway
+    ports:
+      - "8000:8000"
+    environment:
+      AUTH_SERVICE_URL: http://auth_service:8001
+      INCIDENT_SERVICE_URL: http://incident_service:8002
+      DISPATCH_SERVICE_URL: http://dispatch_service:8003
+      ANALYTICS_SERVICE_URL: http://analytics_service:8004
+    depends_on:
+      - auth_service
+      - incident_service
+      - dispatch_service
+      - analytics_service
+    restart: unless-stopped
+
+volumes:
+  auth_db_data:
+  incident_db_data:
+  dispatch_db_data:
+  analytics_db_data:
