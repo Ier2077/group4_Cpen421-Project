@@ -103,9 +103,10 @@ async def proxy(request: Request, path: str):
     if request.url.query:
         target += f"?{request.url.query}"
 
-    # Forward headers (drop host so upstream gets its own)
+    # Forward headers (drop host and accept-encoding so upstream sends plain text)
     headers = dict(request.headers)
     headers.pop("host", None)
+    headers.pop("accept-encoding", None)
 
     body = await request.body()
 
