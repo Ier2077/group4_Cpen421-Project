@@ -102,7 +102,7 @@ async def assign(
     vehicle_id: str,
     req: VehicleAssignRequest,
     db: AsyncSession = Depends(get_db),
-    _user: TokenPayload = Depends(require_roles("system_admin")),
+    
 ):
     return await assign_vehicle_to_incident(db, vehicle_id, req.incident_id)
 
@@ -111,7 +111,7 @@ async def assign(
 async def release(
     vehicle_id: str,
     db: AsyncSession = Depends(get_db),
-    _user: TokenPayload = Depends(require_roles("system_admin")),
+    
 ):
     return await release_vehicle(db, vehicle_id)
 
