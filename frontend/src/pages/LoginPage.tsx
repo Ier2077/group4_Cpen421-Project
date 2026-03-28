@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { Shield, AlertCircle } from 'lucide-react';
 
@@ -58,7 +58,16 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">National Emergency Response &amp; Dispatch Coordination</p>
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Don't have an account?{' '}
+          <Link to="/register" className="text-brand-600 hover:text-brand-700 font-medium">
+            Register
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-400 mt-4">
+          National Emergency Response &amp; Dispatch Coordination
+        </p>
       </div>
     </div>
   );
