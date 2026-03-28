@@ -5,8 +5,8 @@ import { useAuth } from '../features/auth/AuthContext';
 const NAV = [
   { to: '/',           icon: LayoutDashboard, label: 'Dashboard',     roles: null },
   { to: '/incidents',  icon: AlertTriangle,   label: 'Incidents',     roles: ['system_admin','hospital_admin','police_admin','fire_admin'] },
-  { to: '/vehicles',   icon: Truck,           label: 'Vehicles',      roles: null },
-  { to: '/tracking',   icon: MapPin,          label: 'Live Tracking', roles: null },
+  { to: '/vehicles',   icon: Truck,           label: 'Vehicles',      roles: ['system_admin','hospital_admin','police_admin','fire_admin'] },
+  { to: '/tracking',   icon: MapPin,          label: 'Live Tracking', roles: ['system_admin','hospital_admin','police_admin','fire_admin'] },
   { to: '/analytics',  icon: BarChart3,       label: 'Analytics',     roles: ['system_admin','hospital_admin','police_admin','fire_admin'] },
 ];
 
