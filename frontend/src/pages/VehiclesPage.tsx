@@ -4,9 +4,18 @@ import PageHeader from '../components/PageHeader';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
+import { useAuth } from '../features/auth/AuthContext';
 import type { Vehicle } from '../types';
 
-const FILTERS = [
+// Map roles to the vehicle type they can see
+const ROLE_VEHICLE_FILTER: Record<string, string | null> = {
+  system_admin: null,        // sees all
+  hospital_admin: 'ambulance',
+  police_admin: 'police',
+  fire_admin: 'fire',
+};
+
+const ALL_FILTERS = [
   { value: '', label: 'All Units' },
   { value: 'ambulance', label: 'Ambulance' },
   { value: 'police', label: 'Police' },
@@ -14,15 +23,23 @@ const FILTERS = [
 ];
 
 export default function VehiclesPage() {
+  const { user } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [locForm, setLocForm] = useState<{ id: string; lat: string; lng: string } | null>(null);
 
+  // Determine if this user is locked to a specific vehicle type
+  const roleFilter = user ? ROLE_VEHICLE_FILTER[user.role] ?? null : null;
+  const isSystemAdmin = user?.role === 'system_admin';
+
+  // The effective filter: role-locked admins always use their type, system_admin can choose
+  const effectiveFilter = isSystemAdmin ? (filter || undefined) : (roleFilter || undefined);
+
   useEffect(() => {
     setLoading(true);
-    vehicleApi.getAll(filter || undefined).then(setVehicles).finally(() => setLoading(false));
-  }, [filter]);
+    vehicleApi.getAll(effectiveFilter).then(setVehicles).finally(() => setLoading(false));
+  }, [effectiveFilter]);
 
   const saveLoc = async () => {
     if (!locForm) return;
@@ -36,17 +53,27 @@ export default function VehiclesPage() {
   if (loading) return <LoadingSpinner />;
   const avail = vehicles.filter((v) => v.is_available).length;
 
+  // Page title based on role
+  const pageTitle = isSystemAdmin
+    ? 'Vehicles'
+    : roleFilter
+      ? `${roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)} Fleet`
+      : 'Vehicles';
+
   return (
     <div>
-      <PageHeader title="Vehicles" description={`${avail} of ${vehicles.length} units available`}>
-        <div className="flex items-center gap-2">
-          {FILTERS.map((f) => (
-            <button key={f.value} onClick={() => setFilter(f.value)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${filter === f.value ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-200' : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'}`}>
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <PageHeader title={pageTitle} description={`${avail} of ${vehicles.length} units available`}>
+        {/* Only system_admin sees filter buttons */}
+        {isSystemAdmin && (
+          <div className="flex items-center gap-2">
+            {ALL_FILTERS.map((f) => (
+              <button key={f.value} onClick={() => setFilter(f.value)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${filter === f.value ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-200' : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
       </PageHeader>
 
       {vehicles.length === 0 ? <EmptyState title="No vehicles found" /> : (
