@@ -1,5 +1,5 @@
 import api from './client';
-import type { Incident, IncidentCreateRequest } from '../types';
+import type { Incident, IncidentCreateRequest, Hospital } from '../types';
 
 export const incidentApi = {
   create: async (data: IncidentCreateRequest): Promise<Incident> => {
@@ -16,6 +16,10 @@ export const incidentApi = {
   },
   updateStatus: async (id: string, status: string): Promise<Incident> => {
     const res = await api.put(`/incidents/${id}/status`, { status });
+    return res.data;
+  },
+  getHospitals: async (): Promise<Hospital[]> => {
+    const res = await api.get('/incidents/hospitals');
     return res.data;
   },
 };

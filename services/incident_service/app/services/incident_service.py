@@ -154,6 +154,12 @@ async def get_open_incidents(db: AsyncSession) -> list[Incident]:
     return list(result.scalars().all())
 
 
+async def get_all_hospitals(db: AsyncSession) -> list[Hospital]:
+    """Return all hospitals with their current bed capacity."""
+    result = await db.execute(select(Hospital).order_by(Hospital.name))
+    return list(result.scalars().all())
+
+
 async def update_incident_status(
     db: AsyncSession, incident_id: str, req: IncidentStatusUpdateRequest
 ) -> Incident:
@@ -170,6 +176,16 @@ async def update_incident_status(
                 await release_vehicle(incident.assigned_vehicle_id)
             except Exception as e:
                 logger.warning(f"Could not release vehicle: {e}")
+
+        # Restore hospital bed
+        if incident.assigned_hospital_id:
+            result = await db.execute(
+                select(Hospital).where(Hospital.id == incident.assigned_hospital_id)
+            )
+            hospital = result.scalar_one_or_none()
+            if hospital:
+                hospital.available_beds = min(hospital.available_beds + 1, hospital.total_beds)
+                logger.info(f"Restored bed at {hospital.name} ({hospital.available_beds}/{hospital.total_beds})")
 
     await db.commit()
     await db.refresh(incident)

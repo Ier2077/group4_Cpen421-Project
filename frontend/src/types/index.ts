@@ -70,6 +70,16 @@ export interface Vehicle {
   updated_at: string;
 }
 
+export interface Hospital {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  available_beds: number;
+  total_beds: number;
+  region: string | null;
+}
+
 export interface ResponseTimes {
   total_incidents: number;
   avg_response_time_seconds: number;

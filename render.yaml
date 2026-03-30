@@ -24,11 +24,11 @@ services:
           name: erp-database
           property: connectionString
         # Render gives postgres:// — SQLAlchemy needs postgresql+asyncpg://
-        # We handle this transform at app startup (see below)
+        # We handle this transform at app startup 
       - key: JWT_SECRET
         generateValue: true
       - key: RABBITMQ_URL
-        sync: false        # you paste your CloudAMQP URL here after deploy
+        sync: false        
       - key: FRONTEND_URL
         sync: false
 
@@ -53,7 +53,7 @@ services:
       - key: RABBITMQ_URL
         sync: false
       - key: DISPATCH_SERVICE_URL
-        sync: false        # paste the Render URL of dispatch service
+        sync: false        
 
   # ── Dispatch Service ──────────────────────────────────
   - type: web

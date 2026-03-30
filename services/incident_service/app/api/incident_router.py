@@ -7,12 +7,14 @@ from app.schemas.incident import (
     IncidentStatusUpdateRequest,
     IncidentAssignRequest,
     IncidentResponse,
+    HospitalResponse,
 )
 from app.services.incident_service import (
     create_incident,
     get_incident,
     get_open_incidents,
     update_incident_status,
+    get_all_hospitals,
 )
 from app.core.dependencies import get_current_user, require_roles
 from shared.jwt_utils import TokenPayload
@@ -35,6 +37,15 @@ async def list_open(
     _user: TokenPayload = Depends(require_roles("system_admin", "hospital_admin", "police_admin", "fire_admin")),
 ):
     return await get_open_incidents(db)
+
+
+@router.get("/hospitals", response_model=list[HospitalResponse])
+async def list_hospitals(
+    db: AsyncSession = Depends(get_db),
+    _user: TokenPayload = Depends(require_roles("system_admin", "hospital_admin", "police_admin", "fire_admin")),
+):
+    """List all hospitals with current bed capacity."""
+    return await get_all_hospitals(db)
 
 
 @router.get("/{incident_id}", response_model=IncidentResponse)
