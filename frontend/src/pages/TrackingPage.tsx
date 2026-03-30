@@ -24,9 +24,17 @@ const mkIcon = (color: string) =>
   });
 
 const incidentIcon = mkIcon('red');
-const vehicleIcon = mkIcon('blue');
+const vehicleIcon = mkIcon('blue');       // ambulance idle
+const fireIdleIcon = mkIcon('orange');    // fire idle
+const policeIdleIcon = mkIcon('grey');    // police idle
 const vehicleActiveIcon = mkIcon('green');
 const hospitalIcon = mkIcon('violet');
+
+const getIdleVehicleIcon = (serviceType: string) => {
+  if (serviceType === 'fire') return fireIdleIcon;
+  if (serviceType === 'police') return policeIdleIcon;
+  return vehicleIcon; // blue for ambulance
+};
 
 const HOSPITALS = [
   { name: 'Korle Bu Teaching Hospital', lat: 5.5390, lng: -0.2274 },
@@ -242,7 +250,9 @@ export default function TrackingPage() {
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Legend</p>
             <div className="space-y-1.5 text-xs text-gray-600">
               <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-red-500 inline-block" /> Incident</div>
-              <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-blue-500 inline-block" /> Vehicle (idle)</div>
+              <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-blue-500 inline-block" /> Ambulance (idle)</div>
+              <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-orange-400 inline-block" /> Fire truck (idle)</div>
+              <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-gray-400 inline-block" /> Police (idle)</div>
               <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-green-500 inline-block" /> Vehicle (responding)</div>
               <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-purple-500 inline-block" /> Hospital</div>
               <div className="flex items-center gap-2"><span className="h-1 bg-gray-400 w-5 inline-block rounded" style={{ borderTop: '2px dashed #9ca3af' }} /> Planned route</div>
@@ -272,7 +282,7 @@ export default function TrackingPage() {
             {vehicles.map((v) => {
               const isSimVeh = sim?.vehicleId === v.id;
               const pos: [number, number] = isSimVeh && simPos ? simPos : [v.latitude, v.longitude];
-              return (<Marker key={`veh-${v.id}`} position={pos} icon={isSimVeh || v.incident_id ? vehicleActiveIcon : vehicleIcon}>
+              return (<Marker key={`veh-${v.id}`} position={pos} icon={isSimVeh || v.incident_id ? vehicleActiveIcon : getIdleVehicleIcon(v.service_type)}>
                 <Popup><div className="text-sm min-w-[160px]"><p className="font-semibold">{v.plate_number}</p><p className="text-gray-500 capitalize">{v.service_type} — {v.vehicle_status.replace(/_/g, ' ')}</p><p className="text-gray-400 text-xs">{v.assigned_personnel_name || 'Unassigned'}</p></div></Popup>
               </Marker>);
             })}

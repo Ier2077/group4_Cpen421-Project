@@ -23,8 +23,7 @@ services:
         fromDatabase:
           name: erp-database
           property: connectionString
-        # Render gives postgres:// — SQLAlchemy needs postgresql+asyncpg://
-        # We handle this transform at app startup 
+        
       - key: JWT_SECRET
         generateValue: true
       - key: RABBITMQ_URL
@@ -113,15 +112,15 @@ services:
     healthCheckPath: /health
     envVars:
       - key: AUTH_SERVICE_URL
-        sync: false        # paste: https://erp-auth-service.onrender.com
+        sync: false        
       - key: INCIDENT_SERVICE_URL
-        sync: false        # paste: https://erp-incident-service.onrender.com
+        sync: false        
       - key: DISPATCH_SERVICE_URL
-        sync: false        # paste: https://erp-dispatch-service.onrender.com
+        sync: false        
       - key: ANALYTICS_SERVICE_URL
-        sync: false        # paste: https://erp-analytics-service.onrender.com
+        sync: false       
       - key: ALLOWED_ORIGINS
-        sync: false        # paste your frontend URL, or * for dev
+        sync: false        
 
   # ── Redis ─────────────────────────────────────────────
   - type: redis
